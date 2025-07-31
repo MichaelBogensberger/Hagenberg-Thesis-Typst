@@ -1,0 +1,42 @@
+name: Build and Release
+
+on:
+  push:
+    branches: [main]
+
+env:
+  AUTHOR_LASTNAME: bogensberger
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Install fonts
+        run: |
+          mkdir -p ~/.local/share/fonts
+          wget -O /tmp/fonts.zip "https://fontesk.com/download/39191"
+          unzip /tmp/fonts.zip -d /tmp/
+          cp -r /tmp/*.otf ~/.local/share/fonts/
+          fc-cache -f
+      
+      - name: Get version
+        id: version
+        run: |
+          COUNT=$(git rev-list --count HEAD)
+          echo "version=v1.0.$COUNT" >> $GITHUB_OUTPUT
+      
+      - uses: typst-community/setup-typst@v4
+      - name: Build thesis
+        run: typst compile thesis.typ ${{ env.AUTHOR_LASTNAME }}_thesis_${{ steps.version.outputs.version }}.pdf
+      
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.version.outputs.version }}
+          name: Thesis ${{ steps.version.outputs.version }}
+          files: ${{ env.AUTHOR_LASTNAME }}_thesis_${{ steps.version.outputs.version }}.pdf
